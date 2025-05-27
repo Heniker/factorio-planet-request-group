@@ -3,3 +3,9 @@ Version: 0.0.1
 Date: 21.05.2025
   Features:
     - Initial release.
+---------------------------------------------------------------------------------------------------
+Version: 0.1.2
+Date: 28.05.2025
+  Features:
+    - Changed logic to be more like planet whitelist
+    - No more configuration settings
