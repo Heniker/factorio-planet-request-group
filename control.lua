@@ -1,3 +1,7 @@
+local stkey_space_platform_to_numeric_id = "space_platform_numeric_id"
+local stkey_space_platform_count = "space_platform_total_count"
+local logistic_name_postfix = '     ||@'
+
 --- @param name string
 --- @return table<string, LuaPlanet>?
 local function get_planets_from_name(name)
@@ -36,7 +40,7 @@ end
 
 --- @param logistic_section LuaLogisticSection
 local function update_logistic_section(logistic_section)
-  if (not logistic_section or not logistic_section.valid or not logistic_section.filters or not logistic_section.group) then return end
+  if (not logistic_section or not logistic_section.valid or not logistic_section.filters or not logistic_section.group or logistic_section.group == "") then return end
   if (not logistic_section.owner or not logistic_section.owner.surface or not logistic_section.owner.surface.platform or not logistic_section.owner.surface.platform.space_location) then return end
   if (not logistic_section.owner.valid or not logistic_section.owner.surface.valid or not logistic_section.owner.surface.platform.valid) then return end
 
@@ -44,6 +48,10 @@ local function update_logistic_section(logistic_section)
   if (not current_location_planet_proto) then return end
   local section_name_planets = get_planets_from_name(logistic_section.group)
   if (not section_name_planets) then return end
+
+  logistic_section.group = logistic_section.group ..
+      logistic_name_postfix .. storage[stkey_space_platform_to_numeric_id]
+      [logistic_section.owner.surface.platform.index]
 
   local action = nil
   local reaction = nil
@@ -60,9 +68,8 @@ local function update_logistic_section(logistic_section)
   for _, planet in pairs(section_name_planets) do
     if current_location_planet_proto.name == planet.name then
       result_import_proto = action()
-      goto continue
+      break
     end
-    ::continue::
   end
 
   if not result_import_proto then
@@ -91,6 +98,28 @@ local function update_for_entity(entity)
   end
 end
 
+--- @param entity LuaEntity
+local function restore_section_names(entity)
+  if (not entity or not entity.valid) then return end
+
+  local logistic_sections_api = entity.get_logistic_sections()
+  if (not logistic_sections_api) then return end
+
+  local logistic_sections = logistic_sections_api.sections
+  if (not logistic_sections) then return end
+
+  for _, section in pairs(logistic_sections) do
+    if (section.group == '') then goto continue end
+
+    local name = section.group:match("^(.-)" .. logistic_name_postfix)
+    if (not name) then goto continue end
+
+    section.group = name
+
+    ::continue::
+  end
+end
+
 -- script.on_event(defines.events.on_gui_closed, function(event)
 --   if (not event.entity or not event.entity.valid) then return end
 --   update_for_entity(event.entity)
@@ -102,8 +131,22 @@ end
 -- end)
 
 script.on_event(defines.events.on_space_platform_changed_state, function(event)
-  if (not event.platform.valid or not event.platform.state == defines.space_platform_state.waiting_at_station) then return end
+  if (not event.platform.valid) then return end
   if (not event.platform.hub or not event.platform.hub.valid) then return end
-  if (not event.platform.space_location) then return end
-  update_for_entity(event.platform.hub)
+  if (event.platform.state == event.old_state) then return end
+
+  storage[stkey_space_platform_to_numeric_id] = storage[stkey_space_platform_to_numeric_id] or {}
+  storage[stkey_space_platform_count] = storage[stkey_space_platform_count] or 0
+
+  -- why yes, this table only grows bigger
+  if (not storage[stkey_space_platform_to_numeric_id][event.platform.index]) then
+    storage[stkey_space_platform_to_numeric_id][event.platform.index] = storage[stkey_space_platform_count]
+    storage[stkey_space_platform_count] = storage[stkey_space_platform_count] + 1
+  end
+
+  if (event.platform.state == defines.space_platform_state.waiting_at_station) then
+    update_for_entity(event.platform.hub)
+  else
+    restore_section_names(event.platform.hub)
+  end
 end)

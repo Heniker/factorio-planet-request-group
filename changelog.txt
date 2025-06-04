@@ -9,3 +9,8 @@ Date: 28.05.2025
   Features:
     - Changed logic to be more like planet whitelist
     - No more configuration settings
+---------------------------------------------------------------------------------------------------
+Version: 0.1.3
+Date: 05.06.2025
+  Features:
+    - Automatic group renaming to avoid conflicts between space platforms
