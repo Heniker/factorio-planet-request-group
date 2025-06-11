@@ -1,6 +1,7 @@
 local stkey_space_platform_to_numeric_id = "space_platform_numeric_id"
 local stkey_space_platform_count = "space_platform_total_count"
-local logistic_name_postfix = '     ||@'
+local logistic_name_postfix_legacy = '     ||@'
+local generated_logistic_name_prefix = '__gen_'
 
 --- @param name string
 --- @return table<string, LuaPlanet>?
@@ -31,13 +32,6 @@ local function is_any_from_name(name)
   if string.find(name, pattern) then return true end
 end
 
---- @param name LuaPlanet | data.PlanetPrototype
-local function get_alternate_location(planet)
-  for _, p in pairs(game.planets) do
-    if (p.name ~= planet.name) then return p end
-  end
-end
-
 --- @param logistic_section LuaLogisticSection
 local function update_logistic_section(logistic_section)
   if (not logistic_section or not logistic_section.valid or not logistic_section.filters or not logistic_section.group or logistic_section.group == "") then return end
@@ -49,37 +43,44 @@ local function update_logistic_section(logistic_section)
   local section_name_planets = get_planets_from_name(logistic_section.group)
   if (not section_name_planets) then return end
 
-  logistic_section.group = logistic_section.group ..
-      logistic_name_postfix .. storage[stkey_space_platform_to_numeric_id]
-      [logistic_section.owner.surface.platform.index]
-
-  local action = nil
-  local reaction = nil
-  if (is_any_from_name(logistic_section.group)) then
-    action = function() return get_alternate_location(current_location_planet_proto).prototype end
-    reaction = function() return current_location_planet_proto end
-  else
-    action = function() return current_location_planet_proto end
-    reaction = function() return get_alternate_location(current_location_planet_proto).prototype end
+  local generated_section
+  for k, v in pairs(logistic_section.owner.get_logistic_sections().sections) do
+    if (v.group:find("^" .. generated_logistic_name_prefix)) then generated_section = v end
   end
+
+  if (not generated_section) then
+    local platform_id = storage[stkey_space_platform_to_numeric_id][logistic_section.owner.surface.platform.index]
+    generated_section = logistic_section.owner.get_logistic_sections().add_section("__gen_" .. platform_id)
+  end
+
+  if (not generated_section) then return end
+
+  logistic_section.active = false
 
   local result_import_proto = nil
 
   for _, planet in pairs(section_name_planets) do
-    if current_location_planet_proto.name == planet.name then
-      result_import_proto = action()
-      break
+    if current_location_planet_proto.name ~= planet.name then
+      goto continue
     end
+
+    if is_any_from_name(logistic_section.group) then return end
+    result_import_proto = current_location_planet_proto
+    break
+
+    ::continue::
   end
 
-  if not result_import_proto then
-    result_import_proto = reaction()
+  if (not result_import_proto) then
+    if not is_any_from_name(logistic_section.group) then return end
+    result_import_proto = current_location_planet_proto
   end
 
   for k, v in pairs(logistic_section.filters) do
     v.import_from = result_import_proto
-
-    logistic_section.set_slot(k, v)
+    pcall(function()
+      generated_section.set_slot(generated_section.filters_count + 1, v)
+    end)
   end
 end
 
@@ -99,7 +100,7 @@ local function update_for_entity(entity)
 end
 
 --- @param entity LuaEntity
-local function restore_section_names(entity)
+local function restore_sections(entity)
   if (not entity or not entity.valid) then return end
 
   local logistic_sections_api = entity.get_logistic_sections()
@@ -111,7 +112,14 @@ local function restore_section_names(entity)
   for _, section in pairs(logistic_sections) do
     if (section.group == '') then goto continue end
 
-    local name = section.group:match("^(.-)" .. logistic_name_postfix)
+    if (section.group:find("^" .. generated_logistic_name_prefix)) then
+      section.filters = {}
+      logistic_sections_api.remove_section(section.index)
+      goto continue
+    end
+
+    -- legacy --
+    local name = section.group:match("^(.-)" .. logistic_name_postfix_legacy)
     if (not name) then goto continue end
 
     section.group = name
@@ -147,6 +155,6 @@ script.on_event(defines.events.on_space_platform_changed_state, function(event)
   if (event.platform.state == defines.space_platform_state.waiting_at_station) then
     update_for_entity(event.platform.hub)
   else
-    restore_section_names(event.platform.hub)
+    restore_sections(event.platform.hub)
   end
 end)
