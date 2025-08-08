@@ -6,11 +6,6 @@ exports.is_null = is_null
 local is_not_null = function(arg) return arg ~= nil end
 exports.is_not_null = is_not_null
 
-local default_to = function(arg, default)
-  if arg == nil then return default else return arg end
-end
-exports.default_to = default_to
-
 -- auto filters for null values because of how lua works
 local map = function(fun, list)
   local result = {}
@@ -113,7 +108,6 @@ local deduplicate = function(t)
 end
 exports.deduplicate = deduplicate
 
-
 local version_to_number = function(str)
   local major, minor, patch = str:match("^(%d+)%.?(%d*)%.?(%d*)$")
   major = tonumber(major) or 0
@@ -123,5 +117,16 @@ local version_to_number = function(str)
 end
 exports.version_to_number = version_to_number
 
+local wrap = function(str, s1, s2)
+  s1 = s1 or "<"
+  s2 = s2 or ">"
+  return tostring(s1) .. tostring(str) .. tostring(s2)
+end
+exports.wrap = wrap
+
+local escape_lua_pattern = function(s)
+  return (s:gsub("([%(%)%.%%%+%-%*%?%[%^%$])", "%%%1"))
+end
+exports.escape_lua_pattern = escape_lua_pattern
 
 return exports
