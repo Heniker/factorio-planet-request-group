@@ -2,13 +2,13 @@
 Version: 0.0.1
 Date: 21.05.2025
   Features:
-    - Initial release.
+    - Initial release
 ---------------------------------------------------------------------------------------------------
 Version: 0.1.2
 Date: 28.05.2025
   Features:
     - Changed logic to be more like planet whitelist
-    - No more configuration settings
+    - Removed configuration settings
 ---------------------------------------------------------------------------------------------------
 Version: 0.1.3
 Date: 05.06.2025
@@ -18,4 +18,13 @@ Date: 05.06.2025
 Version: 0.1.4
 Date: 09.06.2025
   Features:
-    - No more automatic group renaming. A single new group is generated for platform requests.
+    - Disabled automatic group renaming. A single new group is generated for platform requests
+---------------------------------------------------------------------------------------------------
+Version: 0.1.5
+Date: 09.08.2025
+  Features:
+    - Same item requests from multiple groups are now merged together (previously ignored)
+    - Sections are no longer automatically disabled (disabled sections would be automatically enabled once after update)
+    - Added strict group naming mod setting. If enabled (default) - only planets at the beginning of the group name are parsed by the mod
+    - Added mod setting to select the "inverse-search" icon
+    - Allow using only the "inverse-search" icon without any planets in the group name
