@@ -28,3 +28,9 @@ Date: 09.08.2025
     - Added strict group naming mod setting. If enabled (default) - only planets at the beginning of the group name are parsed by the mod
     - Added mod setting to select the "inverse-search" icon
     - Allow using only the "inverse-search" icon without any planets in the group name
+---------------------------------------------------------------------------------------------------
+Version: 0.1.6
+Date: 17.08.2025
+  Features:
+    - Add some level of compitability with "OSHA Launch Control and Improved Cargo"
+    - Account for group multiplier when creating temporary section
