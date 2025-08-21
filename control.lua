@@ -3,7 +3,7 @@
 -- https://lua-api.factorio.com/latest/index-runtime.html
 Util = require "mod.util"
 
-local IS_DEBUG = true
+local IS_DEBUG = false
 
 -- https://lua-api.factorio.com/latest/concepts/SpaceLocationID.html
 local default_neutral_import_location = "solar-system-edge"
@@ -13,16 +13,16 @@ local setting_inverse_search_pattern = "planet-request-group-inverse-search-patt
 
 local neutral_location_markers = { ["[space-location=orbital-connection]"] = "orbital-connection" }
 
-local mylog = function(arg)
+local devlog = function(arg)
   if IS_DEBUG then log(serpent.line(arg)) end
 end
 
 --- @param name string
 --- @return table<integer, LuaPlanet>?
-local get_planets_from_group = function(name)
+local parse_group_planets = function(name)
   if (not name) then return end
 
-  mylog("get_planets_from_group: " .. Util.wrap(name))
+  devlog("parse_group_planets: " .. Util.wrap(name))
 
   local _skip = "[%s%.%-%+,&]*"
   local planet_search_pattern = _skip .. "%[planet=([^%]]+)%]" .. _skip
@@ -42,11 +42,6 @@ local get_planets_from_group = function(name)
 
   while true do
     local start, ends, match = name:find(planet_search_pattern, lastEnds)
-    log("matches")
-    log(match)
-    log(ends)
-    log(start)
-    log(lastEnds)
 
     if (not start or not ends) then break end
     if (is_strict and start ~= lastEnds) then break end
@@ -67,8 +62,8 @@ local get_planets_from_group = function(name)
     planets = Util.difference(game.planets, planets)
   end
 
-  mylog(
-    "get_planets_from_group result:" .. Util.wrap(Util.map(function(it) return it.name end, planets))
+  devlog(
+    "parse_group_planets result: " .. Util.wrap(Util.map(function(it) return it.name end, planets))
   )
 
   if (next(planets)) then return planets end
@@ -108,7 +103,7 @@ local function is_managed_section(logistic_section)
   if (not next(logistic_section.filters) or not logistic_section.active) then return end
   if (logistic_section.group == "") then return end
   if (logistic_section.group:find("^" .. generated_logistic_name_prefix)) then return end
-  if (not get_planets_from_group(logistic_section.group)) then return end
+  if (not parse_group_planets(logistic_section.group)) then return end
   return true
 end
 
@@ -117,12 +112,12 @@ local function update_logistic_section(logistic_section)
   if (not Util.safeget(logistic_section).owner.surface.platform()) then return end
   if (not is_managed_section(logistic_section)) then return end
 
-  mylog("Update for section: " .. Util.wrap(logistic_section.group))
+  devlog("Update for section: " .. Util.wrap(logistic_section.group))
 
   local current_location_planet_proto = logistic_section.owner.surface.platform.space_location
   if (not current_location_planet_proto) then return end
 
-  local section_name_planets = get_planets_from_group(logistic_section.group)
+  local section_name_planets = parse_group_planets(logistic_section.group)
   if (not section_name_planets) then return end
 
   local generated_section = find_create_generated_section(logistic_section.owner.get_logistic_sections(),
@@ -148,26 +143,25 @@ local function update_logistic_section(logistic_section)
     copy.import_from = current_location_planet_proto
     if (copy.min) then copy.min = copy.min * logistic_section.multiplier end
     if (copy.max) then copy.max = copy.max * logistic_section.multiplier end
-
+    
     local isOk = pcall(function()
       generated_section.set_slot(generated_section.filters_count + 1, copy)
     end)
-
+    
     if (not isOk) then
       local slot, id = Util.find(function(it) return serpent.line(it.value) == serpent.line(v.value) end,
-        generated_section.filters)
-
+      generated_section.filters)
+      
       -- Small safety measure
       if (not id) then goto continue end
-
-      copy.min = copy.min + slot.min
+      if (copy.min and slot.min) then copy.min = copy.min + slot.min end
 
       isOk = pcall(function() generated_section.set_slot(id, copy) end)
     end
 
     -- never happened
     if (not isOk) then
-      mylog("!!! Failed to set filters on generated logistic section")
+      devlog("!!! Failed to set filters on generated logistic section")
     end
 
     ::continue::
@@ -178,7 +172,7 @@ end
 local function update_for_entity(entity)
   if (not Util.safeget(entity).surface.platform()) then return end
 
-  mylog("update_for_entity: " .. Util.wrap(entity.surface.platform.name))
+  devlog("update_for_entity: " .. Util.wrap(entity.surface.platform.name))
 
   local logistic_sections_api = entity.get_logistic_sections()
   if (not logistic_sections_api) then return end
@@ -194,7 +188,7 @@ end
 local function restore_sections(entity)
   if (not Util.safeget(entity).surface.platform()) then return end
 
-  mylog("restore_sections for: " .. Util.wrap(entity.surface.platform.name))
+  devlog("restore_sections for: " .. Util.wrap(entity.surface.platform.name))
 
   local logistic_sections_api = entity.get_logistic_sections()
   if (not logistic_sections_api) then return end
@@ -226,7 +220,7 @@ script.on_event(defines.events.on_entity_logistic_slot_changed, function(event)
   local platform = event.section.owner.surface.platform
   ---@cast platform -?
 
-  mylog("on_entity_logistic_slot_changed: " .. Util.wrap(event.section.group))
+  devlog("on_entity_logistic_slot_changed: " .. Util.wrap(event.section.group))
 
   restore_sections(event.platform.hub)
   if (platform.state == defines.space_platform_state.waiting_at_station) then
@@ -241,7 +235,7 @@ script.on_event(defines.events.on_space_platform_changed_state, function(event)
   if (IS_DEBUG) then
     local _, state = Util.find(function(it) return it == event.platform.state end, defines.space_platform_state)
 
-    mylog("on_space_platform_changed_state: Update for " ..
+    devlog("on_space_platform_changed_state: Update for " ..
       Util.wrap(event.platform.name) .. " . Platform state: " .. Util.wrap(state))
   end
 
@@ -259,11 +253,11 @@ script.on_configuration_changed(function(event)
   local old_version = Util.version_to_number(_old_version)
   local current_version = Util.version_to_number(script.active_mods[script.mod_name])
 
-  mylog("MIGRATION: Current_mod_version: " .. Util.wrap(current_version))
+  devlog("MIGRATION: Current_mod_version: " .. Util.wrap(current_version))
 
   if (old_version <= 104) then
     -- reenable sections that were previously disabled by the mod
-    mylog("MIGRATION: Running migration from version 104...")
+    devlog("MIGRATION: Running migration from version 104...")
 
     -- so Factorio team added ability to manage groups like a month ago...
     -- I'm gonna pretend I do not know about that and continue like it's not there
@@ -287,7 +281,7 @@ script.on_configuration_changed(function(event)
         -- so this should be sufficient
         if (section.group:find(planet_search_pattern)) then
           game.print(script.mod_name .. ": section enabled after migration - " .. section.group)
-          mylog("MIGRATION: Section set to active: " .. Util.wrap(section.group))
+          devlog("MIGRATION: Section set to active: " .. Util.wrap(section.group))
           section.active = true
         end
 
