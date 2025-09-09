@@ -11,6 +11,7 @@ local generated_logistic_name_prefix = "__gen_"
 local setting_is_strict_pattern = "planet-request-group-is-strict-pattern"
 local setting_inverse_search_pattern = "planet-request-group-inverse-search-pattern"
 
+-- compitability with https://mods.factorio.com/mod/osha_launch_control
 local neutral_location_markers = { ["[space-location=orbital-connection]"] = "orbital-connection" }
 
 local devlog = function(arg)
@@ -33,19 +34,19 @@ local parse_group_planets = function(name)
 
   --- @type table<integer, string>
   local group_planet_names = {}
-  local lastEnds = 1
+  local lastEnds = 0
 
   if (is_strict and inverse_pattern_ends) then
     if inverse_pattern_start ~= 1 then return end
-    lastEnds = inverse_pattern_ends + 1
+    lastEnds = inverse_pattern_ends
   end
 
   while true do
     local start, ends, match = name:find(planet_search_pattern, lastEnds)
 
     if (not start or not ends) then break end
-    if (is_strict and start ~= lastEnds) then break end
-    lastEnds = ends + 1
+    if (is_strict and start ~= lastEnds + 1) then break end
+    lastEnds = ends
 
     table.insert(group_planet_names, match)
   end
@@ -109,23 +110,23 @@ end
 
 --- @param logistic_section LuaLogisticSection
 local function update_logistic_section(logistic_section)
-  if (not Util.safeget(logistic_section).owner.surface.platform()) then return end
+  if (not Util.safeget(logistic_section).owner.surface.platform.space_location()) then return end
   if (not is_managed_section(logistic_section)) then return end
 
   devlog("Update for section: " .. Util.wrap(logistic_section.group))
 
-  local current_location_planet_proto = logistic_section.owner.surface.platform.space_location
-  if (not current_location_planet_proto) then return end
+  local platform = logistic_section.owner.surface.platform
+  ---@cast platform -?
 
   local section_name_planets = parse_group_planets(logistic_section.group)
   if (not section_name_planets) then return end
 
   local generated_section = find_create_generated_section(logistic_section.owner.get_logistic_sections(),
-    logistic_section.owner.surface.platform.index)
+    platform.index)
   if (not generated_section) then return end
 
   local has_current_planet_in_group_name = Util.find(
-    function(it) return current_location_planet_proto.name == it.name end,
+    function(it) return platform.space_location.name == it.name end,
     section_name_planets
   )
   if (not has_current_planet_in_group_name) then return end
@@ -140,18 +141,18 @@ local function update_logistic_section(logistic_section)
 
     --- @type LogisticFilter
     local copy = Util.clone_shallow(v)
-    copy.import_from = current_location_planet_proto
+    copy.import_from = platform.space_location
     if (copy.min) then copy.min = copy.min * logistic_section.multiplier end
     if (copy.max) then copy.max = copy.max * logistic_section.multiplier end
-    
+
     local isOk = pcall(function()
       generated_section.set_slot(generated_section.filters_count + 1, copy)
     end)
-    
+
     if (not isOk) then
       local slot, id = Util.find(function(it) return serpent.line(it.value) == serpent.line(v.value) end,
-      generated_section.filters)
-      
+        generated_section.filters)
+
       -- Small safety measure
       if (not id) then goto continue end
       if (copy.min and slot.min) then copy.min = copy.min + slot.min end

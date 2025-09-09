@@ -129,7 +129,7 @@ function safeget(t)
       return safeget(t[key])
     end,
     __call = function(_, default)
-      if t and t["valid"] == false then return default end
+      if t == nil or t["valid"] == false then return default end
       return t or default
     end
   })
