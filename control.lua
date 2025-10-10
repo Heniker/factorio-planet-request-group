@@ -121,10 +121,6 @@ local function update_logistic_section(logistic_section)
   local section_name_planets = parse_group_planets(logistic_section.group)
   if (not section_name_planets) then return end
 
-  local generated_section = find_create_generated_section(logistic_section.owner.get_logistic_sections(),
-    platform.index)
-  if (not generated_section) then return end
-
   local has_current_planet_in_group_name = Util.find(
     function(it) return platform.space_location.name == it.name end,
     section_name_planets
@@ -133,8 +129,21 @@ local function update_logistic_section(logistic_section)
 
   local neutral_import_location = get_neutral_location_from_group(logistic_section.group)
 
+  local generated_section
+  if (#section_name_planets ~= 1) then
+    generated_section = find_create_generated_section(logistic_section.owner.get_logistic_sections(),
+      platform.index)
+    if (not generated_section) then return end
+  end
+
   for k, v in pairs(logistic_section.filters) do
     if (not v.value) then goto continue end
+
+    if (#section_name_planets == 1) then
+      v.import_from = platform.space_location
+      logistic_section.set_slot(k, v)
+      goto continue
+    end
 
     v.import_from = neutral_import_location
     logistic_section.set_slot(k, v)
