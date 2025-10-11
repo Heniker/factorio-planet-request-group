@@ -6,23 +6,23 @@ Date: 21.05.2025
 ---------------------------------------------------------------------------------------------------
 Version: 0.1.2
 Date: 28.05.2025
-  Features:
+  Changes:
     - Changed logic to be more like planet whitelist
     - Removed configuration settings
 ---------------------------------------------------------------------------------------------------
 Version: 0.1.3
 Date: 05.06.2025
-  Features:
+  Changes:
     - Automatic group renaming to avoid conflicts between space platforms
 ---------------------------------------------------------------------------------------------------
 Version: 0.1.4
 Date: 09.06.2025
-  Features:
+  Changes:
     - Disabled automatic group renaming. A single new group is generated for platform requests
 ---------------------------------------------------------------------------------------------------
 Version: 0.1.5
 Date: 09.08.2025
-  Features:
+  Changes:
     - Same item requests from multiple groups are now merged together (previously ignored)
     - Sections are no longer automatically disabled (disabled sections would be automatically enabled once after update)
     - Added strict group naming mod setting. If enabled (default) - only planets at the beginning of the group name are parsed by the mod
@@ -31,6 +31,7 @@ Date: 09.08.2025
 ---------------------------------------------------------------------------------------------------
 Version: 0.1.6
 Date: 17.08.2025
-  Features:
-    - Add some level of compitability with "OSHA Launch Control and Improved Cargo"
+  Changes:
+    - Add some level of compitability with "OSHA Launch Control and Improved Cargo" (not properly tested)
     - Account for group multiplier when creating temporary section
+    - For sections with only one allowed planet no temporary section is created

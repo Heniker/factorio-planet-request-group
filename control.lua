@@ -72,18 +72,19 @@ end
 
 --- @param name string
 local get_neutral_location_from_group = function(name)
+  if (not name) then return end
+
   -- I don't want to implement proper 'strict' parsing for this for now
-  if (not name) then return default_neutral_import_location end
   --- @type string, string
   local v = Util.find(function(v, k) return name:find(k, 0, true) end, neutral_location_markers)
   if (v) then
     return v
   end
-  return default_neutral_import_location
 end
 
---- @param logistic_sections_api LuaLogisticSections?
-local function find_create_generated_section(logistic_sections_api, platform_id)
+--- @param logistic_sections_api LuaLogisticSections
+--- @param gen_id number|string
+local function find_create_generated_section(logistic_sections_api, gen_id)
   if (not logistic_sections_api) then return end
 
   local logistic_sections = logistic_sections_api.sections
@@ -92,10 +93,9 @@ local function find_create_generated_section(logistic_sections_api, platform_id)
 
   if (not generated_section) then
     generated_section =
-        logistic_sections_api.add_section(generated_logistic_name_prefix .. platform_id)
+        logistic_sections_api.add_section(generated_logistic_name_prefix .. gen_id)
   end
 
-  if (not generated_section) then return end
   return generated_section
 end
 
@@ -127,23 +127,32 @@ local function update_logistic_section(logistic_section)
   )
   if (not has_current_planet_in_group_name) then return end
 
-  local neutral_import_location = get_neutral_location_from_group(logistic_section.group)
+  local neutral_import_location = get_neutral_location_from_group(logistic_section.group) or
+      default_neutral_import_location
 
-  local generated_section
-  if (#section_name_planets ~= 1) then
-    generated_section = find_create_generated_section(logistic_section.owner.get_logistic_sections(),
-      platform.index)
-    if (not generated_section) then return end
+  -- handling of the simple case - no generated section required
+  if (#section_name_planets == 1 and neutral_import_location == default_neutral_import_location) then
+    for k, v in pairs(logistic_section.filters) do
+      if (not v.value) then goto continue end
+
+      v.import_from = platform.space_location
+      local isOk = pcall(function() logistic_section.set_slot(k, v) end)
+
+      if (not isOk) then
+        devlog("!!! planet-request-group: control.lua:141")
+      end
+
+      ::continue::
+    end
+    return
   end
+
+  local generated_section = find_create_generated_section(logistic_section.owner.get_logistic_sections(),
+    platform.index)
+  if (not generated_section) then return end
 
   for k, v in pairs(logistic_section.filters) do
     if (not v.value) then goto continue end
-
-    if (#section_name_planets == 1) then
-      v.import_from = platform.space_location
-      logistic_section.set_slot(k, v)
-      goto continue
-    end
 
     v.import_from = neutral_import_location
     logistic_section.set_slot(k, v)
@@ -232,7 +241,7 @@ script.on_event(defines.events.on_entity_logistic_slot_changed, function(event)
 
   devlog("on_entity_logistic_slot_changed: " .. Util.wrap(event.section.group))
 
-  restore_sections(event.platform.hub)
+  restore_sections(platform.hub)
   if (platform.state == defines.space_platform_state.waiting_at_station) then
     update_for_entity(platform.hub)
   end
@@ -265,7 +274,7 @@ script.on_configuration_changed(function(event)
 
   devlog("MIGRATION: Current_mod_version: " .. Util.wrap(current_version))
 
-  if (old_version <= 104) then
+  if (old_version <= Util.version_to_number('0.1.4')) then
     -- reenable sections that were previously disabled by the mod
     devlog("MIGRATION: Running migration from version 104...")
 

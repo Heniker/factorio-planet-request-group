@@ -98,6 +98,7 @@ function deduplicate(t)
 end
 exports.deduplicate = deduplicate
 
+-- minor & patch should not be higher than 99
 function version_to_number(str)
   local major, minor, patch = str:match("^(%d+)%.?(%d*)%.?(%d*)$")
   major = tonumber(major) or 0

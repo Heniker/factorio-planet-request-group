@@ -8,5 +8,5 @@
 		"base >= 2.0",
 		"space-age"
 	],
-	"description": "Automatically sets import_from filter for your space platform logistic requests."
+	"description": "Automatically set planet filters for your space platform logistic requests."
 }
