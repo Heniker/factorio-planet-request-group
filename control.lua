@@ -11,9 +11,6 @@ local generated_logistic_name_prefix = "__gen_"
 local setting_is_strict_pattern = "planet-request-group-is-strict-pattern"
 local setting_inverse_search_pattern = "planet-request-group-inverse-search-pattern"
 
--- compitability with https://mods.factorio.com/mod/osha_launch_control
-local neutral_location_markers = { ["[space-location=orbital-connection]"] = "orbital-connection" }
-
 local devlog = function(arg)
   if IS_DEBUG then log(serpent.line(arg)) end
 end
@@ -73,6 +70,13 @@ end
 --- @param name string
 local get_neutral_location_from_group = function(name)
   if (not name) then return end
+
+  -- compitability with https://mods.factorio.com/mod/osha_launch_control
+  local neutral_location_markers = { ["[space-location=orbital-connection]"] = "orbital-connection" }
+
+  if (not Util.contains("osha_launch_control", Util.key_of(script.active_mods))) then
+    return
+  end
 
   -- I don't want to implement proper 'strict' parsing for this for now
   --- @type string, string
