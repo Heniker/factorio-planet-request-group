@@ -35,3 +35,8 @@ Date: 17.08.2025
     - Add some level of compitability with "OSHA Launch Control and Improved Cargo" (not properly tested)
     - Account for group multiplier when creating temporary section
     - For sections with only one allowed planet no temporary section is created
+---------------------------------------------------------------------------------------------------
+Version: 0.1.7
+Date: 27.10.2025
+  Bugfixes:
+    - Fixed crash after removing "OSHA Launch Control and Improved Cargo"
