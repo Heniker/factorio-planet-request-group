@@ -140,9 +140,9 @@ local function update_logistic_section(logistic_section)
       if (not v.value) then goto continue end
 
       v.import_from = platform.space_location
-      local isOk = pcall(function() logistic_section.set_slot(k, v) end)
+      local isOk, isConflict = pcall(function() return logistic_section.set_slot(k, v) end)
 
-      if (not isOk) then
+      if (not isOk or isConflict) then
         devlog("!!! planet-request-group: control.lua:141")
       end
 
@@ -167,11 +167,11 @@ local function update_logistic_section(logistic_section)
     if (copy.min) then copy.min = copy.min * logistic_section.multiplier end
     if (copy.max) then copy.max = copy.max * logistic_section.multiplier end
 
-    local isOk = pcall(function()
-      generated_section.set_slot(generated_section.filters_count + 1, copy)
+    local isOk, isConflict = pcall(function()
+      return generated_section.set_slot(generated_section.filters_count + 1, copy)
     end)
 
-    if (not isOk) then
+    if (not isOk or isConflict) then
       local slot, id = Util.find(function(it) return serpent.line(it.value) == serpent.line(v.value) end,
         generated_section.filters)
 
@@ -224,12 +224,15 @@ local function restore_sections(entity)
   generated_section.filters = {}
   logistic_sections_api.remove_section(generated_section.index)
 
-  for _, section in pairs(logistic_sections_api.sections) do
-    if (not is_managed_section(section)) then goto continue end
+  for _, logistic_section in pairs(logistic_sections_api.sections) do
+    if (not is_managed_section(logistic_section)) then goto continue end
+    local section_name_planets = parse_group_planets(logistic_section.group)
+    -- skip resetting defaults for the simple case
+    if (not section_name_planets or #section_name_planets == 1) then return end
 
-    for index, filter in pairs(section.filters) do
+    for index, filter in pairs(logistic_section.filters) do
       filter.import_from = default_neutral_import_location
-      section.set_slot(index, filter)
+      logistic_section.set_slot(index, filter)
     end
     ::continue::
   end
